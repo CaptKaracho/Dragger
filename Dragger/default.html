@@ -25,20 +25,25 @@
             cursor: pointer;
         }
 
+        .dropArea {
+            /*position: absolute;
+
+            height:500px;
+            width:150px;
+            left:300px;*/
+            width:210px;
+            height:300px;
+            margin-left: 300px;
+            /*background-color: orange;*/
+        }
+
         .dropTest {
-            position: absolute;
-            width: 200px;
-            height: 200px;
+            position: relative;
+            width: 100px;
+            height: 100px;
+            box-sizing:border-box;
             border: 1px solid black;
-        }
-
-        #dropTest {
-            left: 400px;
-        }
-
-        #dropTest2 {
-            left: 400px;
-            top: 250px;
+            display: inline-block;
         }
 
         .hide {
@@ -66,10 +71,12 @@
 
 
         </div>
-        <div id="dropTest" class="dropTest dropzone"></div>
-
-        <div id="dropTest2" class="dropTest dropzone"></div>
-
+        <div class="dropArea">
+            <div class="dropTest dropzone"></div>
+            <div class="dropTest dropzone"></div>
+            <div class="dropTest dropzone"></div>
+            <div class="dropTest dropzone"></div>
+        </div>
     </div>
     <script>
         'use strict;'

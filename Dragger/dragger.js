@@ -10,6 +10,7 @@ var Dragger = (function ($) {
             inRange: null
         },
         moveObject: {
+            dropOnDropzone: null,
             setPosition: null
         }
     };
@@ -26,7 +27,7 @@ var Dragger = (function ($) {
         var ofY = ofParent.offsetTop;
 
         var rangeOffset = 0;
-
+        var ret = undefined;
         $.each(this.dropzones, function (key, value) {
             var el = $(value);
             var elPos = el.position();
@@ -40,11 +41,12 @@ var Dragger = (function ($) {
                     }
                 });
                 document.dispatchEvent(events.dropzone.inRange);
+                ret = value;
             }
             else
                 $(value).removeClass("active");
         });
-
+        return ret;
     };
     dragger.moveObject = {
         element: null,
@@ -92,11 +94,27 @@ var Dragger = (function ($) {
                 dragger.moveObject.set_position(x, y);
                 dragger.dropzones_getInrange(e);
             }
-        }).mouseup(function (e) { 
+        }).mouseup(function (e) {
             if (dragger.moveObject.element != null) {
+
+                var dropzone = dragger.dropzones_getInrange(e);
+                if (dropzone != undefined) {
+                    dragger.moveObject.set_position(dropzone.offsetLeft, dropzone.offsetTop);
+                }
                 dragger.moveObject.reset();
             }
         });
+    });
+
+    $(document).on("dropzoneInRange", function (event) {
+
+        if (dragger.moveObject.element != null) {
+            var dropzone = event.detail.dropzone;
+
+            //console.dir(dropzone);
+            //dragger.moveObject.set_position()
+        }
+
     });
 
     return dragger;
