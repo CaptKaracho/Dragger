@@ -92,7 +92,7 @@ var Dragger = (function ($) {
                 dragger.moveObject.set_position(x, y);
                 dragger.dropzones_getInrange(e);
             }
-        }).mouseup(function (e) {
+        }).mouseup(function (e) { 
             if (dragger.moveObject.element != null) {
                 dragger.moveObject.reset();
             }
