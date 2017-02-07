@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8" />
+    <script src="Scripts/jquery-3.1.1.min.js"></script>
+    <link href="dragger.css" rel="stylesheet" />
+    <script src="dragger.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+        }
+
+        #state {
+            font-size: 12px;
+            color: green;
+        }
+
+        #dragTest {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-color: green;
+            cursor: pointer;
+        }
+
+        .dropTest {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 1px solid black;
+        }
+
+        #dropTest {
+            left: 400px;
+        }
+
+        #dropTest2 {
+            left: 400px;
+            top: 250px;
+        }
+
+        .hide {
+            visibility: hidden;
+            height: 0px;
+        }
+    </style>
+</head>
+<body>
+    <div id="connectArea">
+        <select id="group">
+            <option value="1" selected>Gruppe1</option>
+            <option value="2">Gruppe2</option>
+        </select><input type="button" value="Connect" onclick="connect()" />
+    </div>
+    <div id="disconnectArea" class="hide">
+        <span id="state"></span><br />
+        <input type="button" value="Disconnect" onclick="disconnect()" />
+    </div>
+
+
+    <br /><br />
+    <div style="position:relative;width:100%;height:100%; top :0px;">
+        <div id="dragTest" class="dragable">
+
+
+        </div>
+        <div id="dropTest" class="dropTest dropzone"></div>
+
+        <div id="dropTest2" class="dropTest dropzone"></div>
+
+    </div>
+    <script>
+        'use strict;'
+        var webSocket;
+
+        var app = {
+            changeView: {
+                connect: function () {
+                    $("#disconnectArea").addClass("hide");
+                    $("#connectArea").removeClass("hide");
+                },
+                disconnect: function () {
+                    $("#disconnectArea").removeClass("hide");
+                    $("#connectArea").addClass("hide");
+                }
+            }
+        };
+
+        function disconnect() {
+            if (webSocket != undefined) {
+                webSocket.close();
+                document.getElementById("state").innerHTML = "";
+            }
+        }
+
+        function connect() {
+            var group = document.getElementById("group");
+            var socket = "ws://" + location.host + "/api/Broadcast?Group=" + group.options[group.selectedIndex].value;
+
+            webSocket = new WebSocket(socket);
+
+            webSocket.onopen = function () {
+                console.dir("WS Connected to Group ");
+                document.getElementById("state").innerHTML = "Connected " + group.options[group.selectedIndex].innerHTML;
+
+                app.changeView.disconnect();
+            };
+
+            webSocket.onclose = function () {
+                app.changeView.connect();
+                webSocket = undefined;
+            };
+
+            webSocket.onmessage = function (event) {
+                var t = JSON.parse(JSON.parse(event.data).message);
+
+                $("#" + t.el).css({
+                    transform: 'translate(' + t.x + 'px, ' + t.y + 'px)'
+                });
+            };
+        }
+
+        $(document).on("moveObject_setPosition", function (e) {
+            if (webSocket != undefined)
+                webSocket.send(JSON.stringify(e.detail));
+        });
+
+    </script>
+</body>
+</html>
