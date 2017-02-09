@@ -94,18 +94,18 @@
         <div style="position:absolute;left:0px;top:0px;">
             <ul>
                 <li>
-                    <div class="dragsource dragsourceTest">source1</div>
+                    <div class="dragsource dragsourceTest" data-type="1" data-description="source1">source1</div>
                 </li>
                 <li>
-                    <div class="dragsource dragsourceTest">source2</div>
+                    <div class="dragsource dragsourceTest" data-type="2" data-description="source2">source2</div>
                 </li>
             </ul>
         </div>
 
-       
+
         <div id="dragableStack">
 
-            <div id="socketMove" class="dragable" style="transform:translate(0px,100px)"></div>
+            <div id="socketMove" class="dragable" style="transform:translate(0px,100px)" data-description="socketTest">SocketTest</div>
         </div>
 
         <div class="dropArea">
@@ -143,7 +143,7 @@
         Dragger.settings.moveObject.fitToDropzone = true;
         //Dragger.settings.dragable.className = "test";
 
-        Dragger.ïnitialize();
+        Dragger.initialize();
 
         function disconnect() {
             if (webSocket != undefined) {
@@ -185,8 +185,25 @@
         });
 
         $(document).on("moveDrop_erasezone", function (e) {
+            //console.dir("dropErase");
+            console.dir("Send Ajax DeleteItem...");
 
-            console.dir("dropErase");
+        });
+        $(document).on("moveDrop_dropzone", function (e) {
+
+            //console.dir("dropzone");
+            var data = e.detail.moveElement.sourceDataset;
+            if (e.detail.moveElement.isNew === undefined || e.detail.moveElement.isNew === true) {
+                console.dir("new Element");
+                console.dir("Send Ajax AddItem(" + data.description + ")... ");
+                e.detail.moveElement.isNew = false;
+
+            }
+            else {
+                console.dir("Send Ajax UpdateItem...");
+            }
+
+
         });
 
     </script>

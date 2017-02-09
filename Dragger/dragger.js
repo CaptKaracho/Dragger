@@ -19,9 +19,10 @@ var Dragger = (function ($) {
         }
     };
 
-    dragger.idGenerator = function () {
+    var idGenerator = function () {
         return Math.random().toString(36).substr(2, 9);
     };
+
     dragger.settings = {
         dragSource: {
             className: 'dragsource'
@@ -46,6 +47,8 @@ var Dragger = (function ($) {
     dragger.dragsources = [];
     dragger.dropzones = [];
     dragger.erasezones = [];
+    dragger.elements = [];
+
     dragger.zones = function () { return this.dropzones.concat(this.erasezones); };
 
     dragger.set_activeZone = function (mouseEvent) {
@@ -106,19 +109,27 @@ var Dragger = (function ($) {
 
         return ret;
     };
-    dragger.moveObject = {
-        element: null,
-        mouseOffsetX: 0,
-        mouseOffsetY: 0,
-        reset: function () {
-            this.element = null;
-            this.mouseOffsetX = 0;
-            this.mouseOffsetY = 0;
-        },
-        set_position: function (x, y) {
+    dragger.moveObject = undefined;
+    //TODO:class
+
+    function MoveElement() {
+        this.id = 0;
+        this.element = undefined;
+        this.sourceDataset = undefined;
+        this.mouseOffsetX = 0;
+        this.mouseOffsetY = 0;
+        this.parentOffsetX = 0;
+        this.parentOffsetY = 0;
+        this.reset = function () {
+            //delete this.element = null;
+            // this.mouseOffsetX = 0;
+            // this.mouseOffsetY = 0;
+            // this.sourceDataset = null;
+        };
+        this.set_position = function (x, y) {
             events.moveObject.setPosition = new CustomEvent("moveObject_setPosition", {
                 detail: {
-                    el: this.element.id,
+                    el: this.id,
                     x: x,
                     y: y
                 }
@@ -129,26 +140,43 @@ var Dragger = (function ($) {
             $(this.element).css({
                 transform: 'translate(' + x + 'px, ' + y + 'px)'
             });
-        }
+        };
     };
 
     dragger.init = function () {
         dragger.dropzones = [].slice.call(document.getElementsByClassName(dragger.settings.dropzone.className));
         dragger.dragsources = [].slice.call(document.getElementsByClassName(dragger.settings.dragSource.className));
         dragger.erasezones = [].slice.call(document.getElementsByClassName(dragger.settings.erasezone.className));
+        [].slice.call(document.getElementsByClassName(dragger.settings.dragable.className)).forEach(f => {
+            var el = new MoveElement();
+            el.element = f;
+            el.id = f.id;
+            el.sourceDataset = f.dataset;
+            dragger.elements.push(el);
+        });
 
         $(document).on("mousedown", "." + dragger.settings.dragSource.className, function (e) {
             let $this = $(e.currentTarget);
 
-            //REDESIGN
-            let id = dragger.idGenerator();
-            var dragEl = "<div id='" + id + "' class='" + dragger.settings.dragable.className + "'></div>";
+            //REDESIGN!
+            let id = idGenerator();
+
+            //TODO: use Templates
+            var dragEl = "<div id='" + id + "' class='" + dragger.settings.dragable.className + "'>" + $this[0].dataset.description
+                + "</div>";
 
             $("#" + dragger.settings.dragable.dragStackId).prepend(dragEl);
 
-            dragger.moveObject.element = $("#" + id)[0];
-            dragger.moveObject.mouseOffsetX = e.offsetX;
-            dragger.moveObject.mouseOffsetY = e.offsetY;
+            var el = new MoveElement();
+            el.id = id;
+            el.element = $("#" + id)[0];
+            el.sourceDataset = $this[0].dataset;
+            el.mouseOffsetX = e.offsetX;
+            el.mouseOffsetY = e.offsetY;
+
+            dragger.moveObject = el;
+            dragger.elements.push(dragger.moveObject);
+
 
             dragger.moveObject.parentOffsetX = $(dragger.moveObject.element).offsetParent()[0].offsetLeft;
             dragger.moveObject.parentOffsetY = $(dragger.moveObject.element).offsetParent()[0].offsetTop;
@@ -160,7 +188,9 @@ var Dragger = (function ($) {
         });
 
         $(document).on("mousedown", "." + dragger.settings.dragable.className, function (e) {
-            dragger.moveObject.element = $(this)[0];
+
+            dragger.moveObject = dragger.elements.find(e => e.id == $(this)[0].id);
+
             dragger.moveObject.mouseOffsetX = e.offsetX;
             dragger.moveObject.mouseOffsetY = e.offsetY;
 
@@ -169,7 +199,7 @@ var Dragger = (function ($) {
         });
 
         $(document).on("mousemove", function (e) {
-            if (dragger.moveObject.element != null) {
+            if (dragger.moveObject !== undefined ) {
                 var x = e.pageX - dragger.moveObject.mouseOffsetX - dragger.moveObject.parentOffsetX;
                 var y = e.pageY - dragger.moveObject.mouseOffsetY - dragger.moveObject.parentOffsetY;
 
@@ -179,13 +209,14 @@ var Dragger = (function ($) {
         });
 
         $(document).on("mouseup", function (e) {
-            if (dragger.moveObject.element != null) {
+            if (dragger.moveObject !== undefined ) {
                 var zone = dragger.activeZone;
                 if (zone != undefined) {
                     if (zone.classList.contains(dragger.settings.dropzone.className)) {
                         events.dropzone.moveDrop = new CustomEvent("moveDrop_dropzone", {
                             detail: {
-                                dropzone: zone
+                                dropzone: zone,
+                                moveElement: dragger.elements.find(f => f.id == dragger.moveObject.id)
                             }
                         });
 
@@ -194,14 +225,15 @@ var Dragger = (function ($) {
                     if (zone.classList.contains(dragger.settings.erasezone.className)) {
                         events.erasezone.moveDrop = new CustomEvent("moveDrop_erasezone", {
                             detail: {
-                                erasezone: zone
+                                erasezone: zone,
+                                moveElement: dragger.elements.find(e => e.id == dragger.moveObject.id)
                             }
                         });
 
                         document.dispatchEvent(events.erasezone.moveDrop);
                     }
                 }
-                dragger.moveObject.reset();
+                dragger.moveObject = undefined;
             }
         });
 
@@ -225,16 +257,20 @@ var Dragger = (function ($) {
             if (dragger.settings.moveObject.fitToDropzone)
                 dragger.moveObject.set_position(zone.offsetLeft, zone.offsetTop);
 
+            //console.dir(event.detail);
         });
 
         $(document).on("moveDrop_erasezone", function (event) {
             $(dragger.moveObject.element).remove();
             $(dragger.erasezones).removeClass("active");
+
+            
+
         });
     };
 
     return {
-        ïnitialize: dragger.init,
+        initialize: dragger.init,
         settings: dragger.settings,
         events: event
 
