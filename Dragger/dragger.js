@@ -2,12 +2,16 @@
 /// <reference path="D:\Entwicklung\Beispiele\Dragger\Dragger\Dragger\Scripts/jquery-3.1.1.min.js" />
 
 var Dragger = (function ($) {
-
     var dragger = {};
 
     var events = {
         dropzone: {
-            inRange: null
+            inRange: null,
+            moveDrop: null
+        },
+        erasezone: {
+            inRange: null,
+            moveDrop: null
         },
         moveObject: {
             dropOnDropzone: null,
@@ -15,37 +19,91 @@ var Dragger = (function ($) {
         }
     };
 
-    dragger.dragClass = "dragable";
-    dragger.dropzoneClass = "dropzone";
+    dragger.idGenerator = function () {
+        return Math.random().toString(36).substr(2, 9);
+    };
+    dragger.settings = {
+        dragSource: {
+            className: 'dragsource'
+        },
+        dragable: {
+            dragStackId: 'dragableStack',
+            className: 'dragable'
+        },
+        dropzone: {
+            className: 'dropzone'
+        },
+        erasezone: {
+            className: 'erasezone'
+        },
+        moveObject: {
+            fitToDropzone: false
+        }
+    };
+
+    dragger.activeZone = null;
+
+    dragger.dragsources = [];
     dragger.dropzones = [];
-    dragger.dropzones_getInrange = function (mouseEvent) {
+    dragger.erasezones = [];
+    dragger.zones = function () { return this.dropzones.concat(this.erasezones); };
+
+    dragger.set_activeZone = function (mouseEvent) {
         var x = mouseEvent.pageX;
         var y = mouseEvent.pageY;
 
         var ofParent = $(mouseEvent.target)[0].offsetParent;
-        var ofX = ofParent.offsetLeft;
-        var ofY = ofParent.offsetTop;
+
+        var ofX = 0;
+        var ofY = 0;
+        if (ofParent !== null) {
+            ofX = ofParent.offsetLeft;
+            ofY = ofParent.offsetTop;
+        }
 
         var rangeOffset = 0;
         var ret = undefined;
-        $.each(this.dropzones, function (key, value) {
+        var hits = 0;
+        $.each(this.zones(), function (key, value) {
             var el = $(value);
             var elPos = el.position();
             if (x > (elPos.left + ofX - rangeOffset) && x < (elPos.left + el.width() + ofX + rangeOffset) && y > (elPos.top + ofY - rangeOffset) && y < (elPos.top + el.height() + ofY + rangeOffset)) {
 
                 $(value).addClass("active");
 
-                events.dropzone.inRange = new CustomEvent("dropzoneInRange", {
-                    detail: {
-                        dropzone: value
-                    }
-                });
-                document.dispatchEvent(events.dropzone.inRange);
+                if ($(value).hasClass(dragger.settings.erasezone.className)) {
+                    //console.dir("erase");
+
+                    events.erasezone.inRange = new CustomEvent("inRange_erasezone", {
+                        detail: {
+                            erasezone: value
+                        }
+                    });
+                    document.dispatchEvent(events.erasezone.inRange);
+                }
+                if ($(value).hasClass(dragger.settings.dropzone.className)) {
+                    //console.dir("dropzone");
+
+                    events.dropzone.inRange = new CustomEvent("inRange_dropzone", {
+                        detail: {
+                            dropzone: value
+                        }
+                    });
+                    document.dispatchEvent(events.dropzone.inRange);
+
+                }
                 ret = value;
+                dragger.activeZone = ret;
+                hits++;
             }
             else
                 $(value).removeClass("active");
         });
+        if (hits === 0) {
+            dragger.activeZone = null;
+            $(dragger.zones()).removeClass("active");
+        }
+
         return ret;
     };
     dragger.moveObject = {
@@ -74,11 +132,34 @@ var Dragger = (function ($) {
         }
     };
 
-    $(document).ready(function () {
+    dragger.init = function () {
+        dragger.dropzones = [].slice.call(document.getElementsByClassName(dragger.settings.dropzone.className));
+        dragger.dragsources = [].slice.call(document.getElementsByClassName(dragger.settings.dragSource.className));
+        dragger.erasezones = [].slice.call(document.getElementsByClassName(dragger.settings.erasezone.className));
 
-        dragger.dropzones = $("." + dragger.dropzoneClass);
+        $(document).on("mousedown", "." + dragger.settings.dragSource.className, function (e) {
+            let $this = $(e.currentTarget);
 
-        $("." + dragger.dragClass).mousedown(function (e) {
+            //REDESIGN
+            let id = dragger.idGenerator();
+            var dragEl = "<div id='" + id + "' class='" + dragger.settings.dragable.className + "'></div>";
+
+            $("#" + dragger.settings.dragable.dragStackId).prepend(dragEl);
+
+            dragger.moveObject.element = $("#" + id)[0];
+            dragger.moveObject.mouseOffsetX = e.offsetX;
+            dragger.moveObject.mouseOffsetY = e.offsetY;
+
+            dragger.moveObject.parentOffsetX = $(dragger.moveObject.element).offsetParent()[0].offsetLeft;
+            dragger.moveObject.parentOffsetY = $(dragger.moveObject.element).offsetParent()[0].offsetTop;
+
+            var x = e.pageX - dragger.moveObject.mouseOffsetX - dragger.moveObject.parentOffsetX;
+            var y = e.pageY - dragger.moveObject.mouseOffsetY - dragger.moveObject.parentOffsetY;
+
+            dragger.moveObject.set_position(x, y);
+        });
+
+        $(document).on("mousedown", "." + dragger.settings.dragable.className, function (e) {
             dragger.moveObject.element = $(this)[0];
             dragger.moveObject.mouseOffsetX = e.offsetX;
             dragger.moveObject.mouseOffsetY = e.offsetY;
@@ -87,35 +168,75 @@ var Dragger = (function ($) {
             dragger.moveObject.parentOffsetY = $(this).offsetParent()[0].offsetTop;
         });
 
-        $(document).mousemove(function (e) {
+        $(document).on("mousemove", function (e) {
             if (dragger.moveObject.element != null) {
                 var x = e.pageX - dragger.moveObject.mouseOffsetX - dragger.moveObject.parentOffsetX;
                 var y = e.pageY - dragger.moveObject.mouseOffsetY - dragger.moveObject.parentOffsetY;
-                dragger.moveObject.set_position(x, y);
-                dragger.dropzones_getInrange(e);
-            }
-        }).mouseup(function (e) {
-            if (dragger.moveObject.element != null) {
 
-                var dropzone = dragger.dropzones_getInrange(e);
-                if (dropzone != undefined) {
-                    dragger.moveObject.set_position(dropzone.offsetLeft, dropzone.offsetTop);
+                dragger.moveObject.set_position(x, y);
+                dragger.set_activeZone(e);
+            }
+        });
+
+        $(document).on("mouseup", function (e) {
+            if (dragger.moveObject.element != null) {
+                var zone = dragger.activeZone;
+                if (zone != undefined) {
+                    if (zone.classList.contains(dragger.settings.dropzone.className)) {
+                        events.dropzone.moveDrop = new CustomEvent("moveDrop_dropzone", {
+                            detail: {
+                                dropzone: zone
+                            }
+                        });
+
+                        document.dispatchEvent(events.dropzone.moveDrop);
+                    }
+                    if (zone.classList.contains(dragger.settings.erasezone.className)) {
+                        events.erasezone.moveDrop = new CustomEvent("moveDrop_erasezone", {
+                            detail: {
+                                erasezone: zone
+                            }
+                        });
+
+                        document.dispatchEvent(events.erasezone.moveDrop);
+                    }
                 }
                 dragger.moveObject.reset();
             }
         });
-    });
 
-    $(document).on("dropzoneInRange", function (event) {
+        $(document).on("inRange_dropzone", function (event) {
 
-        if (dragger.moveObject.element != null) {
-            var dropzone = event.detail.dropzone;
+            if (dragger.moveObject.element != null) {
 
-            //console.dir(dropzone);
-            //dragger.moveObject.set_position()
-        }
+                var dropzone = event.detail.dropzone;
 
-    });
+            }
+        });
 
-    return dragger;
+        $(document).on("inRange_erasezone", function (event) {
+            if (dragger.moveObject.element !== null) {
+                //dragger.moveObject.element.append("erase");
+            }
+        });
+
+        $(document).on("moveDrop_dropzone", function (event) {
+            var zone = event.detail.dropzone;
+            if (dragger.settings.moveObject.fitToDropzone)
+                dragger.moveObject.set_position(zone.offsetLeft, zone.offsetTop);
+
+        });
+
+        $(document).on("moveDrop_erasezone", function (event) {
+            $(dragger.moveObject.element).remove();
+            $(dragger.erasezones).removeClass("active");
+        });
+    };
+
+    return {
+        ïnitialize: dragger.init,
+        settings: dragger.settings,
+        events: event
+
+    };
 })(jQuery);

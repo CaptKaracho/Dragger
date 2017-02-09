@@ -10,6 +10,7 @@
     <style>
         body {
             font-family: Arial;
+            user-select: none;
         }
 
         #state {
@@ -17,7 +18,7 @@
             color: green;
         }
 
-        #dragTest {
+        .dragable, .test {
             position: absolute;
             width: 100px;
             height: 100px;
@@ -26,25 +27,49 @@
         }
 
         .dropArea {
-            /*position: absolute;
-
-            height:500px;
-            width:150px;
-            left:300px;*/
-            width:210px;
-            height:300px;
+            width: 210px;
+            height: 300px;
             margin-left: 300px;
-            /*background-color: orange;*/
+            vertical-align: top;
+        }
+
+        .erasezone {
+            height: 150px;
+            width: 100px;
+            background-color: #d4d4d4;
+        }
+
+        .eraseTest {
+            position: relative;
+            box-sizing: border-box;
+            display: inline-block;
         }
 
         .dropTest {
             position: relative;
             width: 100px;
             height: 100px;
-            box-sizing:border-box;
+            box-sizing: border-box;
             border: 1px solid black;
             display: inline-block;
         }
+
+        .dragsourceTest {
+            height: 25px;
+            width: 100px;
+            background-color: blue;
+            color: white;
+        }
+
+        ul {
+            margin: 0px;
+            padding: 0px;
+            list-style: none;
+        }
+
+            ul li {
+                margin: 10px 0 10px 0;
+            }
 
         .hide {
             visibility: hidden;
@@ -63,20 +88,40 @@
         <span id="state"></span><br />
         <input type="button" value="Disconnect" onclick="disconnect()" />
     </div>
-
-
     <br /><br />
+
     <div style="position:relative;width:100%;height:100%; top :0px;">
-        <div id="dragTest" class="dragable">
-
-
+        <div style="position:absolute;left:0px;top:0px;">
+            <ul>
+                <li>
+                    <div class="dragsource dragsourceTest">source1</div>
+                </li>
+                <li>
+                    <div class="dragsource dragsourceTest">source2</div>
+                </li>
+            </ul>
         </div>
+
+       
+        <div id="dragableStack">
+
+            <div id="socketMove" class="dragable" style="transform:translate(0px,100px)"></div>
+        </div>
+
         <div class="dropArea">
-            <div class="dropTest dropzone"></div>
-            <div class="dropTest dropzone"></div>
-            <div class="dropTest dropzone"></div>
-            <div class="dropTest dropzone"></div>
+            <div class="dropzone dropTest"></div>
+            <div class="dropzone dropTest"></div>
+            <div class="dropzone dropTest"></div>
+            <div class="dropzone dropTest"></div>
+            <div class="erasezone eraseTest">
+                <span>Erase</span>
+            </div>
+            <div class="erasezone eraseTest">
+                <span>Erase2</span>
+            </div>
         </div>
+
+
     </div>
     <script>
         'use strict;'
@@ -94,6 +139,11 @@
                 }
             }
         };
+
+        Dragger.settings.moveObject.fitToDropzone = true;
+        //Dragger.settings.dragable.className = "test";
+
+        Dragger.ïnitialize();
 
         function disconnect() {
             if (webSocket != undefined) {
@@ -132,6 +182,11 @@
         $(document).on("moveObject_setPosition", function (e) {
             if (webSocket != undefined)
                 webSocket.send(JSON.stringify(e.detail));
+        });
+
+        $(document).on("moveDrop_erasezone", function (e) {
+
+            console.dir("dropErase");
         });
 
     </script>

@@ -1,12 +1,20 @@
-﻿.dragable {
+﻿.dragsource {
+    cursor: pointer;
+}
+
+.dragable {
     z-index: 1000;
+    cursor: pointer;
+}
+
+.erasezone{}
+.erasezone.active{
+    background-color:orange;
 }
 
 .dropzone {
     z-index: 900;
 }
-
-
 
     .dropzone.active {
         background-color: red;
